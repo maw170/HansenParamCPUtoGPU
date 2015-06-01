@@ -1,0 +1,15 @@
+This directory containes pre and post processing code from SURF 2014
+
+Code that is designed to run for the CPU (aka code that was written during the summer of 2014) will be stored in the directory CPU.  This code is located under ./examples/CPU.
+Code that is deisnged to run for the GPU (aka code that was written during the first few weeks of SURF 2015) will be stored in the directory src.  It should be noted that 
+code in this directory will be directly based on the cpu code.  The majority of the changes will involve converting iterating loops to GPU kernels
+
+Initial content:
+	examples/CPU:
+		datagen-2.f90 (will likely not be converted)----------------------------------Preprocessing code used to correctly assign forcefields
+		CAL.ctrl----------------------------------------------------------------------Postprocessing code used to control variables of code below
+		Density-unidat.cpp (will likely not be converted)-----------------------------Postprocessing code used to compute the density of the sample
+		hansencompute-unidat.cpp------------------------------------------------------Postprocessing code used to calculate the hansen solubility parameters after molecular data had been collected by postproc-unidat.f90
+		postproc-unidat.f90 (may rewrite in cpp for convenience)----------------------Postprocessing code used to calculate energies of individual molecules
+	GPU:
+		HansenComputeGPU.cpp----------------------------------------------------------Initial component of project; GPU version of hansencompute-unidat.cpp

@@ -1,0 +1,14 @@
+#--------------number of molecules
+25
+#--------------number of atoms
+2200
+#--------------molecular weight of single molecule(amu)
+910.88
+#--------------data file
+molecule.data
+#--------------in file
+runcedann.in
+#--------------dumpfile
+pproc.dump
+#--------------number of images
+199
