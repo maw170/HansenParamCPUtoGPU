@@ -8,6 +8,7 @@
 //kernels that can be either modified or reused.
 ///////////////////////////////
 #include <cuda.h>
+#include <stdio.h>
 
 ///////////////////////////////
 //SumCol
@@ -15,16 +16,17 @@
 //Kernel sums the columns of a large array returning a Nx1 matrix
 //Kernel recieves and returns doubles
 __global__ void SumCol (double *dataIn, double *dataOut){
-
+	
 	//Define thread index
 	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-	
+	printf("dataIn: %d %f\n", thread_id, dataIn[thread_id]);
 	//Define variables to be used
 	double tmpSum = 0;
 	int numRow = sizeof(dataIn)/sizeof(dataIn[0]);
+	printf("numRow: %d\n", numRow);
 	
 	for(int i = 0; i < numRow; i++){
-		tmpSum += dataIn[thread_id,i];
+	//	tmpSum += dataIn[thread_id][i];
 	}
 	//Wait for all threads to finish
 	__syncthreads(); 
@@ -46,9 +48,9 @@ __global__ void SumRow (double *dataIn, double *dataOut){
 	//Define variables to be used
 	double tmpSum = 0;
 	int numCol = sizeof(dataIn)/sizeof(double);
-	
+	printf("numCol: %d\n", numCol);
 	for(int i = 0; i < numCol; i++){
-		tmpSum += dataIn[i,thread_id];
+	//	tmpSum += dataIn[i][thread_id];
 	}
 	//Wait for all threads to finish
 	__syncthreads(); 
