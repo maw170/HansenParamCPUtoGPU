@@ -59,3 +59,47 @@ __global__ void SumRow (double *dataIn, double *dataOut, int *rows, int *cols){
 	dataOut[thread_id] = tmpSum;
 }
 
+///////////////////////////////
+//FillArrayDouble
+///////////////////////////////
+//Kernel fills a given array with a given number
+//Since array is unwrapped, this program can deal 
+//with 1D or 2D arrays (possibly 3D though not tested yet)
+__global__ void FillArrayDouble (double *dataOut, double *fillVal){
+
+	//Define thread index
+	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	//Fill received array with fillVal
+	dataOut[thread_id] = fillVal[0];
+}
+
+///////////////////////////////
+//FillArrayFloat
+///////////////////////////////
+//Kernel fills a given array with a given number
+//Since array is unwrapped, this program can deal 
+//with 1D or 2D arrays (possibly 3D though not tested yet)
+__global__ void FillArrayFloat (float *dataOut, float *fillVal){
+
+	//Define thread index
+	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	//Fill received array with fillVal
+	dataOut[thread_id] = fillVal[0];
+}
+
+///////////////////////////////
+//FillArrayInt
+///////////////////////////////
+//Kernel fills a given array with a given number
+//Since array is unwrapped, this program can deal 
+//with 1D or 2D arrays (possibly 3D though not tested yet)
+__global__ void FillArrayInt (int *dataOut, int *fillVal){
+
+	//Define thread index
+	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+	//Fill received array with fillVal
+	dataOut[thread_id] = fillVal[0];
+}
