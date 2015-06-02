@@ -61,52 +61,13 @@ ifstream fromPost;
 ifstream control;
 ofstream output;
 
-
-/////////////////////////////////////////////
-//Program Specific Kernels
-/////////////////////////////////////////////
-//Fill2DArray
-//Fills two different arrays with a given value
-//Kernel can only process doubles
-__global__ void Fill2DArray (double *data1, double *data2, double *fillVal){
-
-	//Define thread index
-	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-
-	//Fill arrays with fillVal
-	data1[thread_id] = fillVal[0];
-	data2[thread_id] = fillVal[0];
-}
-
-//Fill1DArray
-//Fills single array with a given value
-//Kernel can only process doubles
-__global__ void Fill1DArray (double *data1, double *fillVal){
-	//Define thread index
-	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-	
-	//Fill array with fillVal
-	data1[thread_id] = fillVal[0];
-}
-
 ////////////////////////////////////////////
 //Begin main program                     //
 //////////////////////////////////////////
 int main(int argc, char *argv[]){
-	
-	//Define generic variables
-	cudaError_t oops = cudaSuccess;
-	size_t size1 = 0;
-	size_t size2 = 0;
-	size_t size3 = 0;
-	
-	//Define timer
-	clock_t start;
-	double duration;
 
 	//Read data from universal data file
 	control.open("CAL.ctrl");
-
 	//Check for error
 	if(!control.is_open()){
 		cout << "NO CONTROL: MOVE CAL.ctrl TO SAME DIRECTORY";
@@ -146,64 +107,14 @@ int main(int argc, char *argv[]){
 	//Setup arrays to store data from postprocessing script
 	double molecvdwl[nimage][nmolec]; // !!setup 2d array 
 	double moleccoul[nimage][nmolec]; // !!setup 2d array 
-	double molectstep[nimage];
-
-	//START CUDA CODE//
-	start = clock();
-	//Define pointers and sizes
-	double fill = 0;
-	double *dev_molecvdwl, *dev_moleccoul, *dev_molectstep, *dev_fill;
-	size1 = sizeof(double) * nimage;
-	size2 = sizeof(double) * nimage * nmolec;
-
-	//Allocate memory
-	oops = cudaMalloc(&dev_molecvdwl, size2);
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_molecvdwl\n";
-
-	oops = cudaMalloc(&dev_moleccoul, size2);
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_moleccoul\n";
-
-	oops = cudaMalloc(&dev_molectstep, size1);
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_molectstep\n";
-
-	oops = cudaMalloc(&dev_fill, sizeof(double));
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_fill\n";
-
-	//Copy memory to device
-	oops = cudaMemcpy(dev_molecvdwl, &molecvdwl, size2, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(dev_moleccoul, &moleccoul, size2, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(dev_molectstep, &molectstep, size1, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(dev_fill, &fill, sizeof(double), cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	//Run kernel
-	Fill2DArray<<<nmolec, nimage>>>(dev_molecvdwl, dev_moleccoul, dev_fill);
-	Fill1DArray<<<1, nimage>>>(dev_molectstep, dev_fill);
-
-	//Copy memory from device to host
-	oops = cudaMemcpy(molecvdwl, dev_molecvdwl, size2, cudaMemcpyDeviceToHost);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(moleccoul, dev_moleccoul, size2, cudaMemcpyDeviceToHost);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(molectstep, dev_molectstep, size1, cudaMemcpyDeviceToHost);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-
-	//Free memory to be nice
-	cudaFree(dev_fill);
-	cudaFree(dev_molecvdwl);
-	cudaFree(dev_moleccoul);
-	cudaFree(dev_molectstep);
-
-	duration = (clock() - start)/(double) CLOCKS_PER_SEC;
-	//END CUDA CODE//
+	double molectstep[nimage];;
+	for(int r = 0; r < nimage; r++){
+		molectstep[r] = 0;
+		for (int rr = 0; rr < nmolec; rr++){
+			molecvdwl[r][rr] = 0;
+			moleccoul[r][rr] = 0;
+		}
+	}
 
 	//Fill arrays with data from post processing
 	for(int c = 0; c < nimage; c++){
@@ -328,7 +239,6 @@ int main(int argc, char *argv[]){
 
 	hildebrand = pow(pow(hc,2.0) + pow(hv,2.0), .5);
 
-	/*
 	//write results to file		
 	output.open(foochar3, std::ios::app);
 
@@ -338,7 +248,7 @@ int main(int argc, char *argv[]){
 	output << "UNI\n";
 	output << "Hildebrand\tVdwl\tCoul\n";
 	output << hildebrand << "\t" << hv << "\t" << hc << "\n";
-*/
+
 	//reset and delete variables
 	nimage = 0;
 	nline = 0;
@@ -349,9 +259,6 @@ int main(int argc, char *argv[]){
 	fromSim.close();
 	fromPost.close();
 	output.close();
-
-
-	cout << "TIMER: " << duration << "\n";
 
 return 0;
 }
