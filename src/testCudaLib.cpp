@@ -25,10 +25,10 @@ int main(){
 	cudaError_t oops = cudaSuccess; //checks to see if Cuda code worked
 
 	//Test SumCol and SumRow
-	//testSumColSumRow(oops);
+	testSumColSumRow(oops);
 
 	//Test Fill Array
-	testFillArray(oops);
+	//testFillArray(oops);
 	
 return(0);
 }
@@ -39,6 +39,9 @@ return(0);
 //Tests the two summation functions for column and rows using 
 //Cuda kernels.
 int testSumColSumRow (cudaError_t oops){
+	//Timer declaration
+	clock_t start;
+	double duration;
 	//Declare variables
 	double arr[2][5] = {	{1, 2, 3, 4, 5},
 				{5, 4, 3, 2, 1}};
@@ -53,6 +56,8 @@ int testSumColSumRow (cudaError_t oops){
 	size_t size2 = sizeof(double) * 5;
 	size_t size3 = sizeof(double) * 10;
 
+	//START TIMER
+	start = clock();
 	//Allocate memory	
 	oops = cudaMalloc(&dev_arr, size3);
 	if (oops != cudaSuccess) printf("Failed alloocate dev_arr\n");
@@ -62,7 +67,7 @@ int testSumColSumRow (cudaError_t oops){
 
 	oops = cudaMalloc(&dev_rows, size);
 	if (oops != cudaSuccess) printf("Failed to allocate dev_rows\n");
-
+	
 	oops = cudaMalloc(&dev_ret, size2);
 	if (oops != cudaSuccess) printf("Failed alloocate dev_ret\n");
 
@@ -72,13 +77,13 @@ int testSumColSumRow (cudaError_t oops){
 	//Copy memory to device
 	oops = cudaMemcpy(dev_arr, &arr, size3, cudaMemcpyHostToDevice);
 	if (oops != cudaSuccess) printf("Failed cpy dev_arr\n");
-
+	
 	oops = cudaMemcpy(dev_cols, &cols, size, cudaMemcpyHostToDevice);
 	if (oops != cudaSuccess) printf("Failed cpy dev_cols\n");
 	
 	oops = cudaMemcpy(dev_rows, &rows, size, cudaMemcpyHostToDevice);
 	if (oops != cudaSuccess) printf("Failed cpy dev_rows\n");
-
+	
 	oops = cudaMemcpy(dev_ret, &ret, size2, cudaMemcpyHostToDevice);
 	if (oops != cudaSuccess) printf("Failed cpy dev_ret\n");
 
@@ -104,7 +109,12 @@ int testSumColSumRow (cudaError_t oops){
 	cudaFree((void * )dev_ret);
 	cudaFree(dev_ret2);
 	cudaFree(dev_cols);
-	cudaFree(dev_rows);	
+	cudaFree(dev_rows);
+
+	//END TIMER
+	duration = (clock() - start)/(double) CLOCKS_PER_SEC;
+	cout << "DURATION: " << duration << "\n";
+	
 return 0;
 }
 

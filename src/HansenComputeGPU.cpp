@@ -61,45 +61,45 @@ ifstream fromPost;
 ifstream control;
 ofstream output;
 
-
 /////////////////////////////////////////////
-//Program Specific Kernels
-/////////////////////////////////////////////
-//Fill2DArray
-//Fills two different arrays with a given value
-//Kernel can only process doubles
-__global__ void Fill2DArray (double *data1, double *data2, double *fillVal){
-
-	//Define thread index
-	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-
-	//Fill arrays with fillVal
-	data1[thread_id] = fillVal[0];
-	data2[thread_id] = fillVal[0];
-}
-
-//Fill1DArray
-//Fills single array with a given value
-//Kernel can only process doubles
-__global__ void Fill1DArray (double *data1, double *fillVal){
-	//Define thread index
-	int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+//Define program specific cuda kernel
+//This kernel is copied from CudaLib.h with
+//a few minor adjustments.  The code now
+//processes two arrays instead of one while
+//also subtracting an additional value
+__global__ void SumRow (double *c_in, double *v_in, double *c_out, double *v_out, double *c_tot, double *v_tot, int rows, int cols){
+	//Calculate thread ID
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	//Fill array with fillVal
-	data1[thread_id] = fillVal[0];
-}
+	//Check to see that tid does not exceed matrix dimensions
+	if (tid < rows){
+		double tmpCoul = 0;
+		double tmpVdwl = 0;
+		for(int i = 0; i < cols; i++){
+			tmpCoul += c_in[tid*cols + i];
+			tmpVdwl += v_in[tid*cols + i];
+		}
+		__syncthreads();
+		c_out[tid] = tmpCoul - c_tot[tid];
+		v_out[tid] = tmpVdwl - v_tot[tid];
+		
+		printf("value %d %f %f\n", tid, c_out[tid], v_out[tid]);
+		__syncthreads();
+	}
+	
+
+} 
 
 ////////////////////////////////////////////
 //Begin main program                     //
 //////////////////////////////////////////
 int main(int argc, char *argv[]){
-	
 	//Define generic variables
 	cudaError_t oops = cudaSuccess;
 	size_t size1 = 0;
 	size_t size2 = 0;
 	size_t size3 = 0;
-	
+
 	//Define timer
 	clock_t start;
 	double duration;
@@ -148,62 +148,13 @@ int main(int argc, char *argv[]){
 	double moleccoul[nimage][nmolec]; // !!setup 2d array 
 	double molectstep[nimage];
 
-	//START CUDA CODE//
-	start = clock();
-	//Define pointers and sizes
-	double fill = 0;
-	double *dev_molecvdwl, *dev_moleccoul, *dev_molectstep, *dev_fill;
-	size1 = sizeof(double) * nimage;
-	size2 = sizeof(double) * nimage * nmolec;
-
-	//Allocate memory
-	oops = cudaMalloc(&dev_molecvdwl, size2);
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_molecvdwl\n";
-
-	oops = cudaMalloc(&dev_moleccoul, size2);
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_moleccoul\n";
-
-	oops = cudaMalloc(&dev_molectstep, size1);
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_molectstep\n";
-
-	oops = cudaMalloc(&dev_fill, sizeof(double));
-	if (oops != cudaSuccess) cout << "Failed to allocate dev_fill\n";
-
-	//Copy memory to device
-	oops = cudaMemcpy(dev_molecvdwl, &molecvdwl, size2, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(dev_moleccoul, &moleccoul, size2, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(dev_molectstep, &molectstep, size1, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(dev_fill, &fill, sizeof(double), cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	//Run kernel
-	Fill2DArray<<<nmolec, nimage>>>(dev_molecvdwl, dev_moleccoul, dev_fill);
-	Fill1DArray<<<1, nimage>>>(dev_molectstep, dev_fill);
-
-	//Copy memory from device to host
-	oops = cudaMemcpy(molecvdwl, dev_molecvdwl, size2, cudaMemcpyDeviceToHost);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(moleccoul, dev_moleccoul, size2, cudaMemcpyDeviceToHost);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-	
-	oops = cudaMemcpy(molectstep, dev_molectstep, size1, cudaMemcpyDeviceToHost);
-	if (oops != cudaSuccess) cout << "Failed to cpy dev_molecvdwl\n";
-
-	//Free memory to be nice
-	cudaFree(dev_fill);
-	cudaFree(dev_molecvdwl);
-	cudaFree(dev_moleccoul);
-	cudaFree(dev_molectstep);
-
-	duration = (clock() - start)/(double) CLOCKS_PER_SEC;
-	//END CUDA CODE//
+	for(int r = 0; r < nimage; r++){
+		molectstep[r] = 0;
+		for (int rr = 0; rr < nmolec; rr++){
+			molecvdwl[r][rr] = 0;
+			moleccoul[r][rr] = 0;
+		}
+	}
 
 	//Fill arrays with data from post processing
 	for(int c = 0; c < nimage; c++){
@@ -216,8 +167,8 @@ int main(int argc, char *argv[]){
 			fromPost >> dumint >> molecvdwl[c][b] >> moleccoul[c][b];
 			getline(fromPost, line); //snag new line and move to next 
 		}
-	}
-	
+	}	
+
 	//Setup arrays for parsing data from simulation
 	double tstep[nimage];
 	double cvdwl[nimage]; 
@@ -267,18 +218,77 @@ int main(int argc, char *argv[]){
 
 	//Begin to calculate Hansen solubility parameters
 	//Will be replacing this section of code with GPU processing
+	start = clock();
 
+	//BEGIN CUDA CODE//
+	//Preprocess array to be passed to kernel
 	for(int cc = 0; cc < nimage; cc++){
-		cvdwltmp = cvdwl[cc];
-		ccoultmp = ccoul[cc];
-		
-		for (int bb = 0; bb < nmolec; bb++){ //cycle through all molecules to add Ei - Ec to total for all time steps
-			dvdwl[bb] = dvdwl[bb] + molecvdwl[cc][bb] - cvdwltmp/nmolec;
-			dcoul[bb] = dcoul[bb] + moleccoul[cc][bb] - ccoultmp/nmolec;
-		}
-		voltot = voltot + cvol[cc]; //calc total volume across time steps
-		dumdouble = 0;
+		cvdwl[cc] = cvdwl[cc]/nmolec;
+		ccoul[cc] = ccoul[cc]/nmolec;
 	}
+
+	//Define sizes
+	size1 = sizeof(double) * nimage * nmolec;
+	size2 = sizeof(double) * nmolec;
+	size3 = sizeof(double) * nimage;
+	
+	//Define pointers
+	double *dev_dvdwl, *dev_dcoul, *dev_molecvdwl, *dev_moleccoul, *dev_cvdwl, *dev_ccoul;
+
+	//Allocate pointers
+	oops = cudaMalloc(&dev_dvdwl, size2);
+	if (oops != cudaSuccess) cout << "Failed to allocate dev_dvdwl\n";
+	oops = cudaMalloc(&dev_dcoul, size2);
+	if (oops != cudaSuccess) cout << "Failed to allocate dev_dcoul\n";
+	oops = cudaMalloc(&dev_molecvdwl, size1);
+	if (oops != cudaSuccess) cout << "Failed to allocate dev_molecvdwl\n";
+	oops = cudaMalloc(&dev_moleccoul, size1);
+	if (oops != cudaSuccess) cout << "Failed to allocate dev_moleccoul\n";
+	oops = cudaMalloc(&dev_cvdwl, size3);
+	if (oops != cudaSuccess) cout << "Failed to allocate dev_cvdwl\n";
+	oops = cudaMalloc(&dev_ccoul, size3);
+	if (oops != cudaSuccess) cout << "Failed to allocate dev_ccoul\n";
+
+	//Copy values over to device memory
+	oops = cudaMemcpy(dev_dvdwl, &dvdwl, size2, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dev_dvdwl\n";
+	oops = cudaMemcpy(dev_dcoul, &dcoul, size2, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dev_dcoul\n";
+	oops = cudaMemcpy(dev_molecvdwl, &molecvdwl, size1, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dev_molecvdwl\n";
+	oops = cudaMemcpy(dev_moleccoul, &moleccoul, size1, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dev_moleccoul\n";
+	oops = cudaMemcpy(dev_cvdwl, &cvdwl, size3, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dev_cvdwl\n";
+	oops = cudaMemcpy(dev_ccoul, &ccoul, size3, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dev_ccoul\n";
+
+	//Define block size
+	dim3 blockSize;
+	blockSize.x = 32 * ceil((double)nmolec/32);
+	blockSize.y = 32 * ceil((double)nimages/32);
+	cout << "BLOCK SIZE: " << blockSize.x << blocksize.y << "\n";
+	//Define grid size
+	int gridSize = 1;
+	
+	
+	//Call Kernels
+	SumRow<<<gridSize, blockSize>>>(dev_moleccoul, dev_molecvdwl, dev_dcoul, dev_dvdwl, dev_ccoul, dev_cvdwl, nimage, nmolec);
+	cudaDeviceSynchronize();
+	//Extract Data from kernel
+	oops = cudaMemcpy(dcoul, dev_dcoul, size2, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dcoul " << oops << "\n";
+	oops = cudaMemcpy(dvdwl, dev_dvdwl, size2, cudaMemcpyHostToDevice);
+	if (oops != cudaSuccess) cout << "Failed to copy dvdwl " << oops << "\n";
+
+
+	//Calculate average volume
+	for(int cc = 0; cc < nimage; cc++){
+		voltot = voltot + cvol[cc]; //calc total volume across time steps
+	}
+	duration = (clock()-start)/(double) CLOCKS_PER_SEC;
+
+	//END CUDA CODE//
 
 	//calculate time average of differences and average volume
 	vdwltot = 0;
@@ -338,7 +348,7 @@ int main(int argc, char *argv[]){
 	output << "UNI\n";
 	output << "Hildebrand\tVdwl\tCoul\n";
 	output << hildebrand << "\t" << hv << "\t" << hc << "\n";
-*/
+	 */
 	//reset and delete variables
 	nimage = 0;
 	nline = 0;
@@ -353,6 +363,6 @@ int main(int argc, char *argv[]){
 
 	cout << "TIMER: " << duration << "\n";
 
-return 0;
+	return 0;
 }
 

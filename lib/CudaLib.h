@@ -46,8 +46,7 @@ __global__ void SumRow (double *dataIn, double *dataOut, int *rows, int *cols){
 	
 	//Define variables to be used
 	double tmpSum = 0;
-
-	printf("WIDTH: %d \n", cols[0]);	
+	
 	//Loop through columns and sum
 	for(int i = 0; i < cols[0]; i++){
 		tmpSum += dataIn[thread_id*cols[0] + i];
