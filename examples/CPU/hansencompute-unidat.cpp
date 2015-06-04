@@ -206,6 +206,12 @@ int main(int argc, char *argv[]){
 		voltot = voltot + cvol[cc]; //calc total volume across time steps
 		dumdouble = 0;
 	}
+
+	//Print out differences to see how they compare to GPU code
+	for (int i = 0; i < nmolec; i++){
+		cout << "value " << i << " " << dcoul[i] << " " << dvdwl[i] << "\n";
+	}
+
 	//calculate time average of differences and average volume
 	vdwltot = 0;
 	coultot = 0;

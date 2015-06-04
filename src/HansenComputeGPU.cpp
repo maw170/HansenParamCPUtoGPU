@@ -67,23 +67,30 @@ ofstream output;
 //a few minor adjustments.  The code now
 //processes two arrays instead of one while
 //also subtracting an additional value
-__global__ void SumRow (double *c_in, double *v_in, double *c_out, double *v_out, double *c_tot, double *v_tot, int rows, int cols){
+__global__ void SumCol (double *c_in, double *v_in, double *c_out, double *v_out,  double *c_tot, double *v_tot, int rows, int cols){
+/*	//Setup shared variable for threads of same block to access
+	extern __shared__ int vdata[];
+	extern __shared__ int cdata[];
+*/
 	//Calculate thread ID
-	int tid = blockIdx.x * blockDim.x + threadIdx.x;
-	
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+	int gidx = blockIdx.x * blockDim.x + threadIdx.x;
+	int gidy = blockIdx.y * blockDim.y + threadIdx.y;
+
 	//Check to see that tid does not exceed matrix dimensions
-	if (tid < rows){
+	if (gidx  < cols){
 		double tmpCoul = 0;
 		double tmpVdwl = 0;
-		for(int i = 0; i < cols; i++){
-			tmpCoul += c_in[tid*cols + i];
-			tmpVdwl += v_in[tid*cols + i];
+		for(int i = 0; i < rows; i++){
+			tmpCoul += c_in[i*cols + gidx] - c_tot[i];
+			tmpVdwl += v_in[i*cols + gidx] - v_tot[i];
 		}
 		__syncthreads();
-		c_out[tid] = tmpCoul - c_tot[tid];
-		v_out[tid] = tmpVdwl - v_tot[tid];
+		c_out[gidx] = tmpCoul;
+		v_out[gidx] = tmpVdwl;
 		
-		printf("value %d %f %f\n", tid, c_out[tid], v_out[tid]);
+		printf("value %d %f %f\n", gidx, c_out[gidx], v_out[gidx]);
 		__syncthreads();
 	}
 	
@@ -263,30 +270,33 @@ int main(int argc, char *argv[]){
 	oops = cudaMemcpy(dev_ccoul, &ccoul, size3, cudaMemcpyHostToDevice);
 	if (oops != cudaSuccess) cout << "Failed to copy dev_ccoul\n";
 
+	duration = (clock()-start)/(double) CLOCKS_PER_SEC;
+
 	//Define block size
 	dim3 blockSize;
 	blockSize.x = 32 * ceil((double)nmolec/32);
-	blockSize.y = 32 * ceil((double)nimages/32);
-	cout << "BLOCK SIZE: " << blockSize.x << blocksize.y << "\n";
+	blockSize.y = 1;
+	cout << "BLOCK SIZE: " << blockSize.x << blockSize.y << "\n";
+	cout << "SIZE2 " << size2/sizeof(double) << " NUM MOLEC " << nmolec << "\n";	
 	//Define grid size
-	int gridSize = 1;
-	
+	dim3 gridSize;
+	gridSize.x = 1;
+	gridSize.y = 1;
 	
 	//Call Kernels
-	SumRow<<<gridSize, blockSize>>>(dev_moleccoul, dev_molecvdwl, dev_dcoul, dev_dvdwl, dev_ccoul, dev_cvdwl, nimage, nmolec);
-	cudaDeviceSynchronize();
+	SumCol<<<gridSize, blockSize>>>(dev_moleccoul, dev_molecvdwl, dev_dcoul, dev_dvdwl, dev_ccoul, dev_cvdwl, nimage, nmolec);
+	oops = cudaThreadSynchronize();
+	if (oops != cudaSuccess) cout << "Failed to synchronize threads " << cudaGetErrorString(oops) << "\n";
 	//Extract Data from kernel
-	oops = cudaMemcpy(dcoul, dev_dcoul, size2, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to copy dcoul " << oops << "\n";
-	oops = cudaMemcpy(dvdwl, dev_dvdwl, size2, cudaMemcpyHostToDevice);
-	if (oops != cudaSuccess) cout << "Failed to copy dvdwl " << oops << "\n";
-
+	oops = cudaMemcpy(dcoul, dev_dcoul, size2, cudaMemcpyDeviceToHost);
+	if (oops != cudaSuccess) cout << "Failed to copy dcoul " << cudaGetErrorString(oops) << "\n";
+	oops = cudaMemcpy(dvdwl, dev_dvdwl, size2, cudaMemcpyDeviceToHost);
+	if (oops != cudaSuccess) cout << "Failed to copy dvdwl " << cudaGetErrorString(oops) << "\n";
 
 	//Calculate average volume
 	for(int cc = 0; cc < nimage; cc++){
 		voltot = voltot + cvol[cc]; //calc total volume across time steps
-	}
-	duration = (clock()-start)/(double) CLOCKS_PER_SEC;
+	}	
 
 	//END CUDA CODE//
 
