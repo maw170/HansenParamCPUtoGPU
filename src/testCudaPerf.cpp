@@ -5,13 +5,14 @@
 //This contains a series of functions that test the performance of
 //previously written CUDA kernels.
 ///////////////////////
-#include <cuda.h>
-#include <CudaLib.h>
-#include <ClassLib.h>
+//#include <cuda.h>
+//#include <CudaLib.h>
+//#include <ClassLib.h>
 #include <stdio.h>
+#include <time.h>
+#include <math.h>
 //Declare prototypes
 int optimizeGPULib();
-
 
 ///////////////////////
 //Main Body
@@ -19,7 +20,6 @@ int main (){
 	
 	//test performance
 	optimizeGPULib();
-
 
 return 0;
 }
@@ -42,19 +42,21 @@ int optimizeGPULib(){
 	int cols = 10;
 
 	double arr[rows][cols];
-	for (int i = 0; i < rows; i++)
+	for (int i = 0; i < rows; i++){
 		for (int j = 0; j < cols; j++)
 			arr[i][j] = (double)(i + j);
+	}
 
 	printf("ARRAY DONE\n");
 	//Declare sum arrays and set to 0;
 	double colSum[cols];
-	double rowSum[rows];
-	for (int i = 0; i < cols; i++)
+	for (int i = 0; i < cols; i++){
 		colSum[i] = 0;
-	for (int i = 0; i < rows; i++)
+	}
+	double rowSum[rows];
+	for (int i = 0; i < rows; i++){
 		rowSum[i] = 0;
-
+	}
 	//CPU//
 	printf("start CPU\n");
 	//Start timer
@@ -85,14 +87,14 @@ int optimizeGPULib(){
 	size_t arrSize = sizeof(double) * cols * rows;
 	size_t sumSize = sizeof(double) * rows;	
 	//Allocate memory on Host
-	gpuErr(cudaMalloc(&dev_arr, arrSize));
-	gpuErr(cudaMalloc(&dev_rowSum, sumSize));
+	//gpuErr(cudaMalloc(&dev_arr, arrSize));
+	//gpuErr(cudaMalloc(&dev_rowSum, sumSize));
 
 	printf("Memory is allocated\n");
 
 	//Copy memory over to host
-	gpuErr(cudaMemcpy(dev_arr, arr, arrSize, cudaMemcpyHostToDevice));
-	gpuErr(cudaMemcpy(dev_rowSum, &rowSum, sumSize, cudaMemcpyHostToDevice));
+	//gpuErr(cudaMemcpy(dev_arr, arr, arrSize, cudaMemcpyHostToDevice));
+	//gpuErr(cudaMemcpy(dev_rowSum, &rowSum, sumSize, cudaMemcpyHostToDevice));
 
 	printf("Memorey is done\n");
 
@@ -101,10 +103,10 @@ int optimizeGPULib(){
 	int grid = ceil(rows/block);
 
 	//Run Kernel
-	SumRow<<<grid, block>>>(dev_arr, dev_rowSum, rows, cols);
+	//SumRow<<<grid, block>>>(dev_arr, dev_rowSum, rows, cols);
 	
 	//Copy memory
-	gpuErr(cudaMemcpy(rowSum, dev_rowSum, sumSize, cudaMemcpyDeviceToHost));
+	//gpuErr(cudaMemcpy(rowSum, dev_rowSum, sumSize, cudaMemcpyDeviceToHost));
 
 	//Stop timer
 	gpuDur = (clock() - start)/(double)CLOCKS_PER_SEC * 1000;
