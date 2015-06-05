@@ -23,13 +23,13 @@
 //Code was taken from "Jason R. Mick"'s anwer on stackoverflow.
 //url: stackoverflow.com/questions/9676441/cudas-cudamemcpytosymbol-throwsinvalid-argument-error
 /////////////////////////////
-__inline__ __host__ void gpuAssert(cudaError_t code, char *file, int line){
+__inline__ __host__ void gpuAssert(cudaError_t code, const char* file, int line){
 	//set bool to decide whether to abort or not
 	bool abort = false;
 		
 	//print error to stderr
 	if (code != cudaSuccess){
-		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line;
+		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
 	}	
 	
 	//if already decided to abort then exit code
@@ -66,7 +66,7 @@ typedef struct ArrayProp
 //Program is designed to setup 2D array of processors and threads
 //Program also assumes that 
 /////////////////////////////
-int OptGridBlock (int rows, int cols){
+/*int OptGridBlock (int rows, int cols){
 	//Define general variables
 	int totProc = 14; //This is the total number of processors on a single GPU.
 	int totWarp = 512; //This is the total number of warps on a single GPU
@@ -78,9 +78,9 @@ int OptGridBlock (int rows, int cols){
 	
 	
 
-	
+	return 0;
 }
-
+*/
 /////////////////////////////
 //GenTestArray
 //Generates massive table using nested for loops.
@@ -91,13 +91,15 @@ int OptGridBlock (int rows, int cols){
 //NOTE: This function is not written to be fast!
 //	It is written to give a simple result!
 /////////////////////////////
-int GenTestArray(int rows, int cols)
+double** GenTestArray(int rows, int cols)
 {
-	int arr[rows][cols];
-
-	for (int j = 0; j < cols; j++){
-		for (int i = 0; i < rows; i++){
-			arr[i][j] = i + j;
+	double** arr;
+	arr = new double*[rows];
+	
+	for (int j = 0; j < rows; j++){
+		arr[j] = new double[cols];
+		for (int i = 0; i < cols; i++){
+			arr[j][i] = (double)(i + j);
 		}
 	}
 	return arr;

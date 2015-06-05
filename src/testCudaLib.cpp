@@ -8,6 +8,7 @@
 //////////////////////////////
 #include <cuda.h>
 #include <CudaLib.h>
+#include <ClassLib.h>
 #include <iostream>
 #include <driver_types.h>
 #include <stdio.h>
@@ -17,7 +18,7 @@ using namespace std;
 //Declare prototypes
 int testSumColSumRow (cudaError_t oops);
 int testFillArray (cudaError_t oops);
-
+int optimizeGPULib();
 
 //Body of program
 int main(){
@@ -25,10 +26,13 @@ int main(){
 	cudaError_t oops = cudaSuccess; //checks to see if Cuda code worked
 
 	//Test SumCol and SumRow
-	testSumColSumRow(oops);
+	//testSumColSumRow(oops);
 
 	//Test Fill Array
 	//testFillArray(oops);
+	
+	//Run optimizeGPULib
+	optimizeGPULib();
 	
 return(0);
 }
@@ -91,14 +95,14 @@ int testSumColSumRow (cudaError_t oops){
 	if (oops != cudaSuccess) printf("Failed cpy dev_ret2\n");
 	
 	//Run Cuda kernel from CudaLib.h
-	SumCol<<<5,1>>>(dev_arr, dev_ret, dev_rows, dev_cols);
+	SumCol<<<5,1>>>(dev_arr, dev_ret, rows, cols);
 	oops  = cudaMemcpy(ret, dev_ret, size2, cudaMemcpyDeviceToHost);
 	if (oops != cudaSuccess) printf("Failed cpy ret\n");
 
 	for(int a = 0; a < 5; a++)	
 		cout << "SumCol " << ret[a] << "\n";
 
-	SumRow<<<2,1>>>(dev_arr, dev_ret2, dev_rows, dev_cols);
+	SumRow<<<2,1>>>(dev_arr, dev_ret2, rows, cols);
 	oops = cudaMemcpy(ret2, dev_ret2, size2, cudaMemcpyDeviceToHost);
 	if (oops != cudaSuccess) printf("Failed cpy ret_2\n");
 	for(int a = 0; a < 5; a++)
@@ -222,3 +226,5 @@ int testFillArray (cudaError_t oops){
 
 return 0;
 }
+
+
