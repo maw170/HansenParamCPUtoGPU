@@ -5,12 +5,16 @@
 //This contains a series of functions that test the performance of
 //previously written CUDA kernels.
 ///////////////////////
-//#include <cuda.h>
-//#include <CudaLib.h>
+#include <cuda.h>
+#include <CudaLib.h>
 //#include <ClassLib.h>
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <vector>
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+using namespace std;
 //Declare prototypes
 int optimizeGPULib();
 
@@ -41,19 +45,18 @@ int optimizeGPULib(){
 	int rows = 100000;
 	int cols = 10;
 
-	double arr[rows][cols];
+	vector< vector<double> > arr(rows, vector<double>(cols));
 	for (int i = 0; i < rows; i++){
 		for (int j = 0; j < cols; j++)
 			arr[i][j] = (double)(i + j);
 	}
-
-	printf("ARRAY DONE\n");
+	
 	//Declare sum arrays and set to 0;
-	double colSum[cols];
+	vector<double> colSum(cols);
 	for (int i = 0; i < cols; i++){
 		colSum[i] = 0;
 	}
-	double rowSum[rows];
+	vector<double> rowSum(rows);
 	for (int i = 0; i < rows; i++){
 		rowSum[i] = 0;
 	}
@@ -64,10 +67,10 @@ int optimizeGPULib(){
 	//Sum rows for each column of array (colSum)
 	for(int i = 0; i < rows; i++){
 		for (int j = 0; j < cols; j++){
-			printf("VALUE %d %d\n", i, j);
 			rowSum[i] += arr[i][j];
 		}
 	}
+
 	//Stop timer
 	cpuDur = (clock() - start)/(double)CLOCKS_PER_SEC * 1000;
 	
@@ -76,12 +79,21 @@ int optimizeGPULib(){
 		printf("%d %f\n", i, rowSum[i]);
 	
 	//END CPU
+	
+	//Set Sum arrays to 0
+	for (int i = 0; i < cols; i++){
+		colSum[i] = 0;
+	}
+	for (int i = 0; i < rows; i++){
+		rowSum[i] = 0;
+	}
+	
 	//GPU
 	//Start Timer
 	start = clock();
 	
 	//Declare pointers
-	double *dev_arr, *dev_rowSum;
+	//double *dev_arr, *dev_rowSum;
 
 	//Declare sizes
 	size_t arrSize = sizeof(double) * cols * rows;
@@ -89,25 +101,29 @@ int optimizeGPULib(){
 	//Allocate memory on Host
 	//gpuErr(cudaMalloc(&dev_arr, arrSize));
 	//gpuErr(cudaMalloc(&dev_rowSum, sumSize));
-
-	printf("Memory is allocated\n");
+	thrust::device_vector <double> dev_arr[rows][cols];
+	dev_arr = arr;
+	thrust::device_vector <double> dev_colSum = colSum;
 
 	//Copy memory over to host
 	//gpuErr(cudaMemcpy(dev_arr, arr, arrSize, cudaMemcpyHostToDevice));
 	//gpuErr(cudaMemcpy(dev_rowSum, &rowSum, sumSize, cudaMemcpyHostToDevice));
-
-	printf("Memorey is done\n");
+	double* dev_arr_ptr = thrust::raw_pointer_cast(&dev_arr[0][0]);
+	double* dev_colSum_ptr = thrust::raw_pointer_cast(&dev_colSum[0]);
 
 	//Define grid and block
 	int block = 512;
 	int grid = ceil(rows/block);
 
 	//Run Kernel
-	//SumRow<<<grid, block>>>(dev_arr, dev_rowSum, rows, cols);
+	SumRow<<<grid, block>>>(dev_arr_ptr, dev_colSum_ptr, rows, cols);
 	
 	//Copy memory
 	//gpuErr(cudaMemcpy(rowSum, dev_rowSum, sumSize, cudaMemcpyDeviceToHost));
-
+	thrust::host_vector <double> tmp[cols];
+	tmp = dev_colSum;
+	colSum = tmp;
+	
 	//Stop timer
 	gpuDur = (clock() - start)/(double)CLOCKS_PER_SEC * 1000;
 
